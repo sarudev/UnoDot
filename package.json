@@ -1,0 +1,29 @@
+{
+  "name": "uno",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "cls && node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@discordjs/rest": "1.1.0",
+    "await-event-emitter": "^2.0.2",
+    "chalk": "4.1.2",
+    "discord.js": "14.2.0",
+    "dotenv": "16.0.1",
+    "glob": "8.0.3",
+    "lodash": "4.17.21"
+  },
+  "eslintConfig": {
+    "extends": [
+      "C:/Users/Chami/AppData/Roaming/npm/node_modules/standard/eslintrc.json"
+    ]
+  },
+  "devDependencies": {
+    "standard": "17.0.0"
+  }
+}

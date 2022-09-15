@@ -1,0 +1,16 @@
+{
+  "The player is not the creator.": "No eres el creador de la partida.",
+  "The player is not in the table.": "No estás en la partida.",
+  "The game has not started.": "La partida aún no empezó.",
+  "The game has already started.": "La partida ya comenzó.",
+  "The game has ended.": "La partida terminó.",
+  "The player is already in the table.": "Ya estás en la partida.",
+  "The table is full.": "La partida está llena.",
+  "Not enough players.": "No hay suficientes jugadores.",
+  "It is not the turn of the player.": "No es tu turno.",
+  "The player has already drawn.": "Ya tomaste una carta.",
+  "Can't play this card.": "No puedes jugar esa carta.",
+  "You don't have that card.": "No tienes esa carta.",
+  "Player can't play uno.": "No pueden cartar uno."
+}
+

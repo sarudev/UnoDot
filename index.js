@@ -1,0 +1,105 @@
+/* global client */
+const { Client, GatewayIntentBits, Collection, Routes } = require('discord.js')
+const { REST } = require('@discordjs/rest')
+const glob = require('glob')
+const chalk = require('chalk')
+const diona = require('./src/config/logs')
+require('dotenv').config()
+// ??????????
+globalThis.client = new Client({
+  intents: [
+    // Acceder a las guilds
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ]
+})
+
+// Cargar eventos para la API de UNO
+require('./src/config/unoEvents').load()
+
+// Guardar la ID de la guild de test y la ID del cliente
+const clientId = '1008822242957856810'
+const guildId = '999699194589753424'
+
+// Colecciones para los comandos y las partidas
+client.slashCommands = new Collection()
+client.partidas = new Collection()
+client.gameEmojis = {}
+
+// Glob para los archivos y require.resolve para las rutas completas
+const slashCommands = glob.sync('./src/slashCommands/**/*.js')
+  .map(f => require.resolve(f))
+
+// Pushear a la coleccion de comandos, los archivos ya requeridos
+for (const command of slashCommands) {
+  const cmd = require(command)
+  if (cmd.slashCommand)
+    client.slashCommands.set(command, cmd)
+}
+
+// Conectarse a rest
+const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN)
+
+// Recargar comandos de barra
+;(async () => {
+  try {
+    diona.info('Started refreshing application (/) commands.')
+
+    await rest.put(
+      Routes.applicationGuildCommands(clientId, guildId),
+      {
+        body: Array.from(client.slashCommands.values()).map(c => c.slashCommand.toJSON())
+      }
+    )
+
+    diona.info('Successfully reloaded application (/) commands.')
+
+    client.login(process.env.BOT_TOKEN)
+  } catch (e) {
+    console.log(chalk.red('#'.repeat(process.stdout.columns)))
+    diona.err('Error reloading %s', 'commands', 'cyan')
+    diona.err(e)
+    console.log(chalk.red('#'.repeat(process.stdout.columns)))
+  }
+})()
+
+// array con los directorios de los eventos eventos. nested
+// const events = glob.sync('./src/events/**/*.js', { ignore: './src/events/index.js' })
+// transformar el directorio de los archivos con require.resolve
+// .map(f => require.resolve(f))
+// por cada archivo, suscribirse al evento indicado
+// for (const file of events) {
+// requerir cada evento inidividualmente
+// const event = require(file)
+// diona.info('loaded event %s', event.name, 'cyan')
+// suscribirse al evento con nombre event.name
+// client.on(event.name, async (...args) => {
+// try {
+// re-requerir el evento y ejecutar su función asociada
+// await event.exec(...args)
+// } catch (e) {
+// console.log(chalk.red('#'.repeat(process.stdout.columns)))
+// diona.err('Error in event %s', event.name, 'cyan')
+// diona.err(e)
+// console.log(chalk.red('#'.repeat(process.stdout.columns)))
+// }
+// })
+// }
+
+client.on('ready', require('./src/events/ready').exec)
+client.on('interactionCreate', require('./src/events/interactionCreate').exec)
+client.on('messageCreate', async (msg) => {
+  const eventPath = require.resolve('./src/events/messageCreate')
+  delete require.cache[eventPath]
+  try {
+    await require(eventPath).exec(msg)
+  } catch (e) {
+    console.log(chalk.red('#'.repeat(process.stdout.columns)))
+    diona.err('Error in event %s', 'messageCreate', 'cyan')
+    diona.err(e)
+    console.log(chalk.red('#'.repeat(process.stdout.columns)))
+  }
+})
+
+// require('http').createServer((req, res) => res.end('Bot is alive!')).listen(3000)
