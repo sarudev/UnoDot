@@ -5,7 +5,7 @@ const glob = require('glob')
 const chalk = require('chalk')
 const diona = require('./src/config/logs')
 require('dotenv').config()
-// ??????????
+
 globalThis.client = new Client({
   intents: [
     // Acceder a las guilds
@@ -65,41 +65,41 @@ const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN)
 })()
 
 // array con los directorios de los eventos eventos. nested
-// const events = glob.sync('./src/events/**/*.js', { ignore: './src/events/index.js' })
-// transformar el directorio de los archivos con require.resolve
-// .map(f => require.resolve(f))
+const events = glob.sync('./src/events/**/*.js', { ignore: './src/events/index.js' })
+  // transformar el directorio de los archivos con require.resolve
+  .map(f => require.resolve(f))
 // por cada archivo, suscribirse al evento indicado
-// for (const file of events) {
-// requerir cada evento inidividualmente
-// const event = require(file)
-// diona.info('loaded event %s', event.name, 'cyan')
-// suscribirse al evento con nombre event.name
-// client.on(event.name, async (...args) => {
-// try {
-// re-requerir el evento y ejecutar su función asociada
-// await event.exec(...args)
-// } catch (e) {
-// console.log(chalk.red('#'.repeat(process.stdout.columns)))
-// diona.err('Error in event %s', event.name, 'cyan')
-// diona.err(e)
-// console.log(chalk.red('#'.repeat(process.stdout.columns)))
-// }
-// })
-// }
+for (const file of events) {
+  // requerir cada evento inidividualmente
+  const event = require(file)
+  diona.info('loaded event %s', event.name, 'cyan')
+  // suscribirse al evento con nombre event.name
+  client.on(event.name, async (...args) => {
+    try {
+      // re-requerir el evento y ejecutar su función asociada
+      await event.exec(...args)
+    } catch (e) {
+      console.log(chalk.red('#'.repeat(process.stdout.columns)))
+      diona.err('Error in event %s', event.name, 'cyan')
+      diona.err(e)
+      console.log(chalk.red('#'.repeat(process.stdout.columns)))
+    }
+  })
+}
 
-client.on('ready', require('./src/events/ready').exec)
-client.on('interactionCreate', require('./src/events/interactionCreate').exec)
-client.on('messageCreate', async (msg) => {
-  const eventPath = require.resolve('./src/events/messageCreate')
-  delete require.cache[eventPath]
-  try {
-    await require(eventPath).exec(msg)
-  } catch (e) {
-    console.log(chalk.red('#'.repeat(process.stdout.columns)))
-    diona.err('Error in event %s', 'messageCreate', 'cyan')
-    diona.err(e)
-    console.log(chalk.red('#'.repeat(process.stdout.columns)))
-  }
-})
+// client.on('ready', require('./src/events/ready').exec)
+// client.on('interactionCreate', require('./src/events/interactionCreate').exec)
+// client.on('messageCreate', async (msg) => {
+//   const eventPath = require.resolve('./src/events/messageCreate')
+//   delete require.cache[eventPath]
+//   try {
+//     await require(eventPath).exec(msg)
+//   } catch (e) {
+//     console.log(chalk.red('#'.repeat(process.stdout.columns)))
+//     diona.err('Error in event %s', 'messageCreate', 'cyan')
+//     diona.err(e)
+//     console.log(chalk.red('#'.repeat(process.stdout.columns)))
+//   }
+// })
 
 // require('http').createServer((req, res) => res.end('Bot is alive!')).listen(3000)

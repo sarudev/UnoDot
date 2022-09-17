@@ -17,7 +17,7 @@ module.exports = {
         iconURL: client.creator.avatarURL()
       })
 
-    await int.reply({ embeds: [embed], ephemeral: false })
+    await int.reply({ embeds: [embed], ephemeral: true })
   }
 }
 
