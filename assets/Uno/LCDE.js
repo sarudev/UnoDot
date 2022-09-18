@@ -83,7 +83,7 @@ class LCDE {
   forEach (callback) {
     let actual = this.start
     for (let i = 0; i < this.length; i++) {
-      callback(actual.value)
+      callback(actual.value, i)
       actual = actual.next
     }
   }

@@ -11,7 +11,7 @@ class Table {
   #players
   #creator
   #turn
-  #leftTurn
+  #rightTurn
   #room
   #discard
   #started
@@ -32,7 +32,7 @@ class Table {
       index: 0,
       user: null
     }
-    this.#leftTurn = true
+    this.#rightTurn = true
     this.#room = roomId
     this.#discard = new Deck()
     this.#started = false
@@ -62,8 +62,8 @@ class Table {
     return this.#turn
   }
 
-  get leftTurn () {
-    return this.#leftTurn
+  get rightTurn () {
+    return this.#rightTurn
   }
 
   get room () {
@@ -89,7 +89,7 @@ class Table {
   }
 
   get prevPlayer () {
-    return this.#leftTurn ? this.#players.at(this.#turn.index - 1) : this.#players.at(this.#turn.index + 1)
+    return this.#rightTurn ? this.#players.at(this.#turn.index - 1) : this.#players.at(this.#turn.index + 1)
   }
 
   get currentPlayer () {
@@ -97,7 +97,7 @@ class Table {
   }
 
   get nextPlayer () {
-    return this.#leftTurn ? this.#players.at(this.#turn.index + 1) : this.#players.at(this.#turn.index - 1)
+    return this.#rightTurn ? this.#players.at(this.#turn.index + 1) : this.#players.at(this.#turn.index - 1)
   }
 
   get currentPlayerDeck () {
@@ -120,7 +120,7 @@ class Table {
         index: this.#turn.index,
         user: this.#turn.user.log
       },
-      leftTurn: this.#leftTurn,
+      rightTurn: this.#rightTurn,
       room: this.#room,
       discard: this.#discard?.map(c => c.log),
       started: this.#started,
@@ -198,6 +198,9 @@ class Table {
     if (!this.#started)
       throw new Error('The game has not started.')
 
+    if (this.#deck.length === 0)
+      this.#discardToDeck()
+
     if (this.#players.length === 1)
       this.endGame(type || 'leave')
 
@@ -210,11 +213,13 @@ class Table {
     if (this.currentPlayer.handDeck.length === 0 && this.currentPlayer.uno)
       return this.#removePlayer({ playerId: this.currentPlayer.id, type: 'play' })
 
-    if (this.currentPlayer.handDeck.length === 0 && !this.currentPlayer.uno)
+    if (this.currentPlayer.handDeck.length === 0 && !this.currentPlayer.uno && this.#deck.length > 1)
       this.currentPlayer.handDeck.push(this.#deck.draw({ count: 2 }))
-
-    if (this.currentPlayer.handDeck.length > 1 && this.currentPlayer.uno)
-      this.currentPlayer.uno = false
+    else if (this.currentPlayer.handDeck.length === 0 && !this.currentPlayer.uno) {
+      this.currentPlayer.handDeck.push(this.#deck.draw())
+      this.#discardToDeck()
+      this.currentPlayer.handDeck.push(this.#deck.draw())
+    }
 
     if (!this.currentPlayer.draw)
       this.currentPlayer.handDeck.push(this.#deck.draw({ count: 1 }))
@@ -222,10 +227,10 @@ class Table {
     if (this.currentPlayer.draw)
       this.currentPlayer.draw = false
 
-    if (this.#deck.length === 0)
-      this.#discardToDeck()
+    if (this.currentPlayer.handDeck.length > 1 && this.currentPlayer.uno)
+      this.currentPlayer.uno = false
 
-    this.#leftTurn ? this.#turn.index++ : this.#turn.index--
+    this.#rightTurn ? this.#turn.index++ : this.#turn.index--
     this.#turn.user = this.currentPlayer
     if (this.currentPlayer.blocked) {
       this.currentPlayer.blocked = false
@@ -331,7 +336,7 @@ class Table {
 
     this.currentPlayer.draw = true
 
-    await tableEventEmitter.emit('play', this, this.#turn.user.id, card.log, color)
+    await tableEventEmitter.emit('play', this, this.#turn.user.id, card.log, color, ['+4', '+2', 'bloqueo', 'reversa'].includes(card.special) ? this.nextPlayer.id : null)
 
     this.nextTurn({ playerId: this.currentPlayer.id })
   }
@@ -376,7 +381,7 @@ class Table {
     return handDeck.map(c => c.log)
   }
 
-  #removePlayer ({ playerId, type } = { playerId: null, type: null }) {
+  async #removePlayer ({ playerId, type } = { playerId: null, type: null }) {
     if (!playerId)
       throw new Error('`playerId` CANNOT BE null -> Table.removePlayer()')
 
@@ -385,8 +390,10 @@ class Table {
     if (playerIndex === -1)
       throw new Error('The player is not in the table.')
 
-    if (this.#leftTurn && playerIndex <= this.#turn.index)
+    if (this.#rightTurn && playerIndex <= this.#players.findIndex(p => this.#players.at(this.#turn.index).id === p.id))
       this.#turn.index--
+
+    await tableEventEmitter.emit('leave', this, this.#players.at(playerIndex).id, type === 'play')
 
     this.#players.remove(playerIndex)
 
@@ -445,12 +452,28 @@ class Table {
       this.nextPlayer.blocked = true
       this.nextPlayer.draw = true
     }
-    if (['+4', '+2'].includes(card.special))
-      this.nextPlayer.handDeck.push(this.#deck.draw({ count: Number(card.special) }))
-    else if (card.special === 'cambio')
+    if (['+4', '+2'].includes(card.special)) {
+      if (this.#deck.length > 3 && card.special === '+4')
+        this.nextPlayer.handDeck.push(this.#deck.draw({ count: 4 }))
+      else if (this.#deck.length < 4 && card.special === '+4') {
+        let count = 0
+        while (this.#deck.length !== 0) {
+          this.nextPlayer.handDeck.push(this.#deck.draw())
+          count++
+        }
+        this.#discardToDeck()
+        this.nextPlayer.handDeck.push(this.#deck.draw({ count: 4 - count }))
+      } else if (this.#deck.length > 1 && card.special === '+2')
+        this.nextPlayer.handDeck.push(this.#deck.draw({ count: 2 }))
+      else if (this.#deck.length < 2 && card.special === '+2') {
+        this.nextPlayer.handDeck.push(this.#deck.draw())
+        this.#discardToDeck()
+        this.nextPlayer.handDeck.push(this.#deck.draw())
+      }
+    } else if (card.special === 'cambio')
       this.#currentColor = card.color
     else if (card.special === 'reversa') {
-      this.#leftTurn = !this.#leftTurn
+      this.#rightTurn = !this.#rightTurn
       if (this.#players.length === 2) {
         this.nextPlayer.blocked = true
         this.nextPlayer.draw = true

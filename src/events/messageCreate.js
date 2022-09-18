@@ -1,6 +1,3 @@
-const { EmbedBuilder, hyperlink } = require('discord.js')
-const saru = client.users.cache.get('999693766313123860')
-
 module.exports = {
   name: 'messageCreate',
   /**
@@ -23,7 +20,7 @@ module.exports = {
     const cmd = args.shift()
     const exec = args.join(' ')
 
-    if (cmd === 'eval')
+    if (cmd === 'eval' && int.author.id === client.creator.id)
       console.log(eval(exec)) // eslint-disable-line no-eval
   }
 }

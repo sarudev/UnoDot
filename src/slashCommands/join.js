@@ -20,7 +20,7 @@ module.exports = {
         return await int.reply({ embeds: [client.error.setDescription(`**${error}**`)], ephemeral: true })
       else {
         console.log(e)
-        return await int.reply({ embeds: [client.error.setDescription(`**Este error no debería aparecer, por favor contactate con Saru#5673 para que pueda solucionarlo.\n${e.message}**`)] })
+        return await int.channel.send({ embeds: [client.error.setDescription(`**Este error no debería aparecer, por favor contactate con Saru#5673 para que pueda solucionarlo.\n${e.message}**`)] })
       }
     }
   }

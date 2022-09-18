@@ -21,7 +21,7 @@ module.exports = {
     return await int.reply({
       embeds: [
         new EmbedBuilder()
-          .setAuthor({ name: 'No me quiero ir señor Stack...', iconURL: client.user.avatarURL() })
+          .setAuthor({ name: `No me quiero ir señor ${client.creator.username}...`, iconURL: client.user.avatarURL() })
           .setColor(0xf61b29)
           .setImage('https://pa1.narvii.com/6941/9dcc7a45fa7d826f7a7e624cb425c13760de8c64r1-320-124_hq.gif')
       ]

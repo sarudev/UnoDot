@@ -1,6 +1,6 @@
 /* global client */
 const { time, EmbedBuilder, formatEmoji } = require('discord.js')
-const { tableEventEmitter, Table } = require('../../assets/Uno/Table.js')
+const { tableEventEmitter, Table } = require('../../assets/Uno/Table.js') // eslint-disable-line no-unused-vars
 
 const functions = {
   /**
@@ -8,7 +8,6 @@ const functions = {
    */
   create: async (table) => {
     const int = table.editableObject.int
-    embeds.playerList = table.players
     embeds.int = int
 
     await int.reply({ embeds: [embeds.create(table.creator.id)] })
@@ -24,12 +23,14 @@ const functions = {
   /**
    * @param {Table} table
    */
-  leave: async (table, playerId) => {
+  leave: async (table, playerId, win) => {
     const int = table.editableObject.int
 
     if (table.editableObject.kick)
       await int.channel.send({ embeds: [embeds.kick(playerId)] })
-    else {
+    else if (win) {
+      await int.channel.send({ embeds: [embeds.win(playerId)] })
+    } else {
       await int.reply({ embeds: [embeds.leave(playerId)] })
     }
   },
@@ -74,7 +75,7 @@ const functions = {
   turn: async (table, playerId) => {
     const int = table.editableObject.int
 
-    await int.channel.send({ embeds: [embeds.turn(playerId)] })
+    await int.channel.send({ embeds: [embeds.turn(playerId, table.players)] })
 
     clearTimeout(table.editableObject.kickPlayer)
     const kickPlayer = autoLeave(table, playerId)
@@ -93,10 +94,10 @@ const functions = {
   /**
    * @param {Table} table
    */
-  play: async (table, playerId, card, color) => {
+  play: async (table, playerId, card, color, skipped) => {
     const int = table.editableObject.int
 
-    await int.reply({ embeds: [embeds.play(playerId, card, color)] })
+    await int.reply({ embeds: [embeds.play(playerId, card, color, skipped, table.players.length)] })
   },
   /**
    * @param {Table} table
@@ -129,23 +130,16 @@ const embeds = {
   get warning () {
     return formatEmoji('1018381367551201340', true)
   },
-  set playerList (playerList) {
-    this._playerList = playerList
-  },
-  get playerList () {
-    return this._playerList
-  },
   create (playerid) {
     const player = this.player(playerid)
 
     return new EmbedBuilder()
       .setAuthor({ name: `Nueva partida - Sala N ° ${this.int.channelId}`, iconURL: client.user.avatarURL() })
-      .setDescription(`**<@${player.id}> acaba de crear una nueva partida en este canal.**`)
+      .setDescription(`**${player} acaba de crear una nueva partida en este canal.**`)
       .setThumbnail(player.avatarURL() || player.defaultAvatarURL)
       .setColor(0xf61b2a)
       .setFields(
         [
-          // { name: '\u200b', value: `**<@${player.id}> acaba de crear una nueva partida en este canal.**` },
           { name: '\u200b', value: '**Para unirte a la partida.\n> `/join`**', inline: true },
           { name: '\u200b', value: '**Para salirte de la partida.\n> `/leave`**', inline: true },
           { name: '\u200b', value: '**Para ver las reglas.\n> `/rules`**', inline: true },
@@ -161,7 +155,7 @@ const embeds = {
 
     return new EmbedBuilder()
       .setAuthor({ name: 'Nuevo jugador en la sala.', iconURL: client.user.avatarURL() })
-      .setDescription(`**<@${player.id}> se unió a la partida.**`)
+      .setDescription(`**${player} se unió a la partida.**`)
       .setThumbnail(player.avatarURL() || player.defaultAvatarURL)
       .setColor(0x3dc9e3)
   },
@@ -170,7 +164,7 @@ const embeds = {
 
     return new EmbedBuilder()
       .setAuthor({ name: 'Un jugador se fue.', iconURL: client.user.avatarURL() })
-      .setDescription(`**<@${player.id}> abandonó la partida.**`)
+      .setDescription(`**${player} abandonó la partida.**`)
       .setThumbnail(player.avatarURL() || player.defaultAvatarURL)
       .setColor(0x216e7d)
   },
@@ -179,7 +173,16 @@ const embeds = {
 
     return new EmbedBuilder()
       .setAuthor({ name: 'Un jugador fue expulsado.', iconURL: client.user.avatarURL() })
-      .setDescription(`**<@${player.id}> se quedó sin tiempo para jugar.**`)
+      .setDescription(`**${player} se quedó sin tiempo para jugar.**`)
+      .setThumbnail(player.avatarURL() || player.defaultAvatarURL)
+      .setColor(0x216e7d)
+  },
+  win (playerid) {
+    const player = this.player(playerid)
+
+    return new EmbedBuilder()
+      .setAuthor({ name: 'Un jugador ganó.', iconURL: client.user.avatarURL() })
+      .setDescription(`**${player} jugó todas sus cartas y ganó.**`)
       .setThumbnail(player.avatarURL() || player.defaultAvatarURL)
       .setColor(0x216e7d)
   },
@@ -195,7 +198,7 @@ const embeds = {
 
     return new EmbedBuilder()
       .setAuthor({ name: 'La partida ha comenzado.', iconURL: client.user.avatarURL() })
-      .setDescription(`**El primero en jugar es <@${player.id}>\n${this.warning} Autoleave ${time(new Date(Date.now() + +process.env.AUTO_LEAVE), 'R')} ${this.warning}**`)
+      .setDescription(`**El primero en jugar es ${player}\n${this.warning} Autoleave ${time(new Date(Date.now() + +process.env.AUTO_LEAVE), 'R')} ${this.warning}**`)
       .setThumbnail(player.avatarURL() || player.defaultAvatarURL)
       .setColor(0x56aa55)
       .addFields(
@@ -203,33 +206,35 @@ const embeds = {
       )
       .setImage(`https://cdn.discordapp.com/emojis/${emojiId}.png`)
   },
-  play (playerid, card, color) {
+  play (playerid, card, color, skipped, cantPlayers) {
     const player = this.player(playerid)
     const emojiId = client.gameEmojis[color + (card.value || card.special.replace('+', '_'))]
 
     return new EmbedBuilder()
       .setAuthor({ name: 'Carta jugada.', iconURL: client.user.avatarURL() })
-      .setDescription(`**👇 <@${player.id}> jugó 👇**`)
+      .setDescription(
+        `**${['+4', '+2', 'bloqueo'].includes(card.special) || (card.special === 'reversa' && cantPlayers === 2) ? `${this.player(skipped)} fue bloqueado.\n\n` : ''}👇 ${player} jugó 👇**`
+      )
       .setThumbnail(player.avatarURL() || player.defaultAvatarURL)
       .setColor(0x56aa55)
       .setImage(`https://cdn.discordapp.com/emojis/${emojiId}.png`)
   },
-  turn (playerid) {
+  turn (playerid, playerList) {
     const player = this.player(playerid)
 
     return new EmbedBuilder()
       .setAuthor({ name: 'Cambio de turno.', iconURL: client.user.avatarURL() })
-      .setDescription(`**Turno de <@${player.id}>\n${this.warning} Autoleave ${time(new Date(Date.now() + +process.env.AUTO_LEAVE), 'R')} ${this.warning}**`)
+      .setDescription(`**Turno de ${player}\n${this.warning} Autoleave ${time(new Date(Date.now() + +process.env.AUTO_LEAVE), 'R')} ${this.warning}**`)
       .setThumbnail(player.avatarURL() || player.defaultAvatarURL)
       .setColor(0x56aa55)
-      .addFields(...this.turnFunc())
+      .addFields(...this.turnFunc(playerList))
   },
   end (playerid, startTimestamp, endTimestamp, type) {
     const player = this.player(playerid)
 
     return new EmbedBuilder()
       .setAuthor({ name: 'Partida terminada.', iconURL: client.user.avatarURL() })
-      .setDescription(`**El ${type === 'play' ? 'perdedor' : 'ganador'} es <@${player.id}>**`)
+      .setDescription(`**El ${type === 'play' ? 'perdedor' : 'ganador'} es ${player}**`)
       .setThumbnail(player.avatarURL() || player.defaultAvatarURL)
       .setColor(0xf61b2a)
       .addFields(
@@ -248,7 +253,7 @@ const embeds = {
 
     return new EmbedBuilder()
       .setAuthor({ name: 'Carta tomada.', iconURL: client.user.avatarURL() })
-      .setDescription(`**<@${player.id}> tomó una carta y ${state ? '' : 'no'} puede jugar.**`)
+      .setDescription(`**${player} tomó una carta y ${state ? '' : 'no'} puede jugar.**`)
       .setThumbnail(player.avatarURL() || player.defaultAvatarURL)
       .setColor(0x56aa55)
   },
@@ -268,7 +273,7 @@ const embeds = {
 
     return new EmbedBuilder()
       .setAuthor({ name: '¡UNO!', iconURL: client.user.avatarURL() })
-      .setDescription(`**<@${player.id}> cantó UNO**\nSi juega su última carta, ganará.`)
+      .setDescription(`**${player} cantó UNO**\nSi juega su última carta, ganará.`)
       .setThumbnail(player.avatarURL() || player.defaultAvatarURL)
       .setColor(0x56aa55)
   },
@@ -277,15 +282,15 @@ const embeds = {
 
     return new EmbedBuilder()
       .setAuthor({ name: 'Cambio de Creador.', iconURL: client.user.avatarURL() })
-      .setDescription(`**<@${player.id}> es el nuevo creador de la sala.**`)
+      .setDescription(`**${player} es el nuevo creador de la sala.**`)
       .setThumbnail(player.avatarURL() || player.defaultAvatarURL)
       .setColor(0x56aa55)
   },
-  turnFunc () {
+  turnFunc (playerList) {
     const fields = []
-    this.playerList.forEach((p, i) => {
+    playerList.forEach((p, i) => {
       fields.push({ name: '\u200b', value: `**<@${p.id}>\n> ${p.handDeck.length} ${p.handDeck.length > 1 ? 'cartas' : 'carta'} restantes.${p.uno ? '\nUNO' : ''}**`, inline: true })
-      if (i % 2 === 0 && i !== 2)
+      if ((i + 1) % 2 === 0)
         fields.push({ name: '\u200b', value: '\u200b', inline: true })
     })
     return fields
