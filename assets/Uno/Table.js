@@ -164,7 +164,7 @@ class Table {
     if (!player)
       throw new Error('The player is not in the table.')
 
-    await tableEventEmitter.emit('leave', this, playerId)
+    // await tableEventEmitter.emit('leave', this, playerId)
 
     if (player.equals(this.#players.at(0))) {
       this.#creator = this.#players.at(1)
