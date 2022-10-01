@@ -85,7 +85,7 @@ require('dotenv').config()
     diona.info('Started refreshing application (/) commands.')
 
     await rest.put(
-      Routes.applicationGuildCommands(clientId, guildId),
+      Routes.applicationGuildCommands(clientId/* , guildId */),
       {
         body: Array.from(client.slashCommands.values()).map(c => c.slashCommand.toJSON())
       }
