@@ -66,34 +66,15 @@ require('dotenv').config()
       })
     }
 
-    // client.on('ready', require('./src/events/ready').exec)
-    // client.on('interactionCreate', require('./src/events/interactionCreate').exec)
-    // client.on('messageCreate', async (msg) => {
-    //   const eventPath = require.resolve('./src/events/messageCreate')
-    //   delete require.cache[eventPath]
-    //   try {
-    //     await require(eventPath).exec(msg)
-    //   } catch (e) {
-    //     console.log(chalk.red('#'.repeat(process.stdout.columns)))
-    //     diona.err('Error in event %s', 'messageCreate', 'cyan')
-    //     diona.err(e)
-    //     console.log(chalk.red('#'.repeat(process.stdout.columns)))
-    //   }
-    // })
-
     // Recargar comandos de barra
     diona.info('Started refreshing application (/) commands.')
 
-    await rest.put(
-      Routes.applicationGuildCommands(clientId/* , guildId */),
-      {
-        body: Array.from(client.slashCommands.values()).map(c => c.slashCommand.toJSON())
-      }
-    )
+    const body = Array.from(client.slashCommands.values()).map(c => c.slashCommand.toJSON())
+
+    // Routes.applicationGuildCommands(clientId, guildId)
+    await rest.put(Routes.applicationCommands(clientId), { body })
 
     diona.info('Successfully reloaded application (/) commands.')
-
-    // require('http').createServer((req, res) => res.end('Bot is alive!')).listen(3000)
 
     client.login(process.env.BOT_TOKEN)
   } catch (e) {
