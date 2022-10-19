@@ -22,7 +22,7 @@ require('dotenv').config()
 
     // Guardar la ID de la guild de test y la ID del cliente
     const clientId = '1008822242957856810'
-    const guildId = '999699194589753424'
+    // const guildId = '999699194589753424'
 
     // Colecciones para los comandos y las partidas
     client.slashCommands = new Collection()
