@@ -67,14 +67,13 @@ require('dotenv').config()
     }
 
     // Recargar comandos de barra
-    diona.info('Started refreshing application (/) commands.')
+    diona.info('Started refreshing application (/) commands...')
 
     const body = Array.from(client.slashCommands.values()).map(c => c.slashCommand.toJSON())
 
-    // Routes.applicationGuildCommands(clientId, guildId)
-    await rest.put(Routes.applicationCommands(clientId), { body })
+    const data = await rest.put(Routes.applicationCommands(clientId), { body })
 
-    diona.info('Successfully reloaded application (/) commands.')
+    diona.info(`Successfully reloaded ${data} application (/) commands.`)
 
     client.login(process.env.BOT_TOKEN)
   } catch (e) {
